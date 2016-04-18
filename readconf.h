@@ -164,6 +164,9 @@ typedef struct {
 	char   *hostbased_key_types;
 	char   *pubkey_key_types;
 
+	int obfuscate_handshake;
+	char *obfuscate_keyword;
+
 	char	*ignored_unknown; /* Pattern list of unknown tokens to ignore */
 }       Options;
 

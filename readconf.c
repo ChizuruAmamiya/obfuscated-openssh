@@ -132,6 +132,7 @@ typedef enum {
 	oHost, oMatch,
 	oForwardAgent, oForwardX11, oForwardX11Trusted, oForwardX11Timeout,
 	oGatewayPorts, oExitOnForwardFailure,
+	oObfuscateHandshake, oObfuscateKeyword,
 	oPasswordAuthentication, oRSAAuthentication,
 	oChallengeResponseAuthentication, oXAuthLocation,
 	oIdentityFile, oHostName, oPort, oCipher, oRemoteForward, oLocalForward,
@@ -273,6 +274,8 @@ static struct {
 	{ "permitlocalcommand", oPermitLocalCommand },
 	{ "visualhostkey", oVisualHostKey },
 	{ "useroaming", oDeprecated },
+	{ "obfuscatehandshake", oObfuscateHandshake },
+	{ "obfuscatekeyword", oObfuscateKeyword },
 	{ "kexalgorithms", oKexAlgorithms },
 	{ "ipqos", oIPQoS },
 	{ "requesttty", oRequestTTY },
@@ -1575,6 +1578,16 @@ parse_keytypes:
 		    filename, linenum, keyword);
 		return 0;
 
+	case oObfuscateHandshake:
+		intptr = &options->obfuscate_handshake;
+		goto parse_flag;
+
+	case oObfuscateKeyword:
+		if (*activep)
+			options->obfuscate_handshake = 1;
+		charptr = &options->obfuscate_keyword;
+		goto parse_string;
+
 	case oUnsupported:
 		error("%s line %d: Unsupported option \"%s\"",
 		    filename, linenum, keyword);
@@ -1754,6 +1767,8 @@ initialize_options(Options * options)
 	options->update_hostkeys = -1;
 	options->hostbased_key_types = NULL;
 	options->pubkey_key_types = NULL;
+	options->obfuscate_handshake = 0;
+	options->obfuscate_keyword = NULL;
 }
 
 /*

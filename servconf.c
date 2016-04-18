@@ -77,6 +77,7 @@ initialize_server_options(ServerOptions *options)
 
 	/* Standard Options */
 	options->num_ports = 0;
+	options->num_obfuscated_ports = 0;
 	options->ports_from_cmdline = 0;
 	options->queued_listen_addrs = NULL;
 	options->num_queued_listens = 0;
@@ -159,6 +160,7 @@ initialize_server_options(ServerOptions *options)
 	options->num_permitted_opens = -1;
 	options->adm_forced_command = NULL;
 	options->chroot_directory = NULL;
+	options->obfuscate_keyword = NULL;
 	options->authorized_keys_command = NULL;
 	options->authorized_keys_command_user = NULL;
 	options->revoked_keys_file = NULL;
@@ -224,7 +226,7 @@ fill_default_server_options(ServerOptions *options)
 		}
 	}
 	/* No certificates by default */
-	if (options->num_ports == 0)
+	if (options->num_ports == 0 && options->num_obfuscated_ports == 0)
 		options->ports[options->num_ports++] = SSH_DEFAULT_PORT;
 	if (options->address_family == -1)
 		options->address_family = AF_UNSPEC;
@@ -401,7 +403,8 @@ typedef enum {
 	/* Portable-specific options */
 	sUsePAM,
 	/* Standard Options */
-	sPort, sHostKeyFile, sServerKeyBits, sLoginGraceTime,
+	sPort, sObfuscatedPort, sObfuscateKeyword,
+	sHostKeyFile, sServerKeyBits, sLoginGraceTime,
 	sKeyRegenerationTime, sPermitRootLogin, sLogFacility, sLogLevel,
 	sRhostsRSAAuthentication, sRSAAuthentication,
 	sKerberosAuthentication, sKerberosOrLocalPasswd, sKerberosTicketCleanup,
@@ -456,6 +459,8 @@ static struct {
 	{ "pamauthenticationviakbdint", sDeprecated, SSHCFG_GLOBAL },
 	/* Standard Options */
 	{ "port", sPort, SSHCFG_GLOBAL },
+	{ "obfuscatedport", sObfuscatedPort, SSHCFG_GLOBAL },
+	{ "obfuscatekeyword", sObfuscateKeyword, SSHCFG_GLOBAL },
 	{ "hostkey", sHostKeyFile, SSHCFG_GLOBAL },
 	{ "hostdsakey", sHostKeyFile, SSHCFG_GLOBAL },		/* alias */
 	{ "hostkeyagent", sHostKeyAgent, SSHCFG_GLOBAL },
@@ -640,9 +645,13 @@ add_listen_addr(ServerOptions *options, char *addr, int port)
 {
 	u_int i;
 
-	if (port == 0)
+	if (port == 0) {
 		for (i = 0; i < options->num_ports; i++)
 			add_one_listen_addr(options, addr, options->ports[i]);
+		for (i = 0; i < options->num_obfuscated_ports; i++)
+			add_one_listen_addr(
+				options, addr, options->obfuscated_ports[i]);
+	}
 	else
 		add_one_listen_addr(options, addr, port);
 }
@@ -696,7 +705,7 @@ process_queued_listen_addrs(ServerOptions *options)
 {
 	u_int i;
 
-	if (options->num_ports == 0)
+	if (options->num_ports == 0 && options->num_obfuscated_ports == 0)
 		options->ports[options->num_ports++] = SSH_DEFAULT_PORT;
 	if (options->address_family == -1)
 		options->address_family = AF_UNSPEC;
@@ -1113,6 +1122,36 @@ process_server_config_line(ServerOptions *options, char *line,
 		if (options->ports[options->num_ports-1] <= 0)
 			fatal("%s line %d: Badly formatted port number.",
 			    filename, linenum);
+		break;
+
+	case sObfuscatedPort:
+		if (options->ports_from_cmdline)
+			return 0;
+		if (options->listen_addrs != NULL)
+			fatal("%s line %d: ports must be specified "
+				  "before ListenAddress.", filename, linenum);
+		if (options->num_obfuscated_ports >= MAX_PORTS)
+			fatal("%s line %d: too many ports.", filename, linenum);
+		arg = strdelim(&cp);
+		if (!arg || *arg == '\0')
+			fatal("%s line %d: missing port "
+				  "number.", filename, linenum);
+		options->obfuscated_ports[options->num_obfuscated_ports++] =
+			a2port(arg);
+		if (options->obfuscated_ports[options->num_obfuscated_ports - 1]
+			<= 0)
+			fatal("%s line %d: badly formatted "
+				  "port number.", filename, linenum);
+		break;
+
+	case sObfuscateKeyword:
+		charptr = &options->obfuscate_keyword;
+		arg = strdelim(&cp);
+		if (!arg || arg == '\0')
+			fatal("%s line %d: missing keyword "
+				  "argument.", filename, linenum);
+		if (*activep && *charptr == NULL)
+			*charptr = xstrdup(arg);
 		break;
 
 	case sServerKeyBits:

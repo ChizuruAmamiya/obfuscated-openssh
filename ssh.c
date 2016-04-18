@@ -205,12 +205,13 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-"usage: ssh [-1246AaCfGgKkMNnqsTtVvXxYy" SCTP_OPT "] [-b bind_address] [-c cipher_spec]\n"
+"usage: ssh [-1246AaCfGgKkMNnqsTtVvXxYyz" SCTP_OPT "] [-b bind_address] [-c cipher_spec]\n"
 "           [-D [bind_address:]port] [-E log_file] [-e escape_char]\n"
 "           [-F configfile] [-I pkcs11] [-i identity_file] [-L address]\n"
 "           [-l login_name] [-m mac_spec] [-O ctl_cmd] [-o option] [-p port]\n"
 "           [-Q query_option] [-R address] [-S ctl_path] [-W host:port]\n"
-"           [-w local_tun[:remote_tun]] [user@]hostname [command]\n"
+"           [-w local_tun[:remote_tun]] [-Z obfuscate_keyword]\n"
+"           [user@]hostname [command]\n"
 	);
 	exit(255);
 }
@@ -611,7 +612,7 @@ main(int ac, char **av)
 
  again:
 	while ((opt = getopt(ac, av, "1246ab:c:e:fgi:kl:m:no:p:qstvx" SCTP_OPT
-	    "ACD:E:F:GI:KL:MNO:PQ:R:S:TVw:W:XYy")) != -1) {
+	    "ACD:E:F:GI:KL:MNO:PQ:R:S:TVw:W:XYyzZ:")) != -1) {
 		switch (opt) {
 		case '1':
 			options.protocol = SSH_PROTO_1;
@@ -850,11 +851,6 @@ main(int ac, char **av)
 			else
 				options.control_master = SSHCTL_MASTER_YES;
 			break;
-#ifdef SCTP
-		case 'z':
-			options.transport = TRANSPORT_SCTP;
-			break;
-#endif
 		case 'p':
 			options.port = a2port(optarg);
 			if (options.port <= 0) {
@@ -929,6 +925,13 @@ main(int ac, char **av)
 			break;
 		case 'F':
 			config = optarg;
+			break;
+		case 'z':
+			options.obfuscate_handshake = 1;
+			break;
+		case 'Z':
+			options.obfuscate_handshake = 1;
+			options.obfuscate_keyword = optarg;
 			break;
 		default:
 			usage();
@@ -1044,7 +1047,7 @@ main(int ac, char **av)
 	 * If CanonicalizePermittedCNAMEs have been specified but
 	 * other canonicalization did not happen (by not being requested
 	 * or by failing with fallback) then the hostname may still be changed
-	 * as a result of CNAME following. 
+	 * as a result of CNAME following.
 	 *
 	 * Try to resolve the bare hostname name using the system resolver's
 	 * usual search rules and then apply the CNAME follow rules.
@@ -1481,7 +1484,7 @@ ssh_confirm_remote_forward(int type, u_int32_t seq, void *ctxt)
 			channel_update_permitted_opens(rfwd->handle, -1);
 		}
 	}
-	
+
 	if (type == SSH2_MSG_REQUEST_FAILURE) {
 		if (options.exit_on_forward_failure) {
 			if (rfwd->listen_path != NULL)
@@ -1608,7 +1611,7 @@ ssh_init_forwarding(void)
 			else
 				error("Could not request tunnel forwarding.");
 		}
-	}			
+	}
 }
 
 static void

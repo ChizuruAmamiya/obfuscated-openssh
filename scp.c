@@ -397,9 +397,9 @@ main(int argc, char **argv)
 
 	fflag = tflag = 0;
 #ifdef SCTP
-	while ((ch = getopt(argc, argv, "dfl:prtvBCc:i:P:q12346S:o:F:z")) != -1)
+	while ((ch = getopt(argc, argv, "dfl:prtvBCc:i:P:q12346S:o:F:zZ")) != -1)
 #else
-	while ((ch = getopt(argc, argv, "dfl:prtvBCc:i:P:q12346S:o:F:")) != -1)
+	while ((ch = getopt(argc, argv, "dfl:prtvBCc:i:P:q12346S:o:F:zZ")) != -1)
 #endif
 		switch (ch) {
 		/* User-visible flags. */
@@ -408,9 +408,7 @@ main(int argc, char **argv)
 		case '4':
 		case '6':
 		case 'C':
-#ifdef SCTP
 		case 'z':
-#endif
 			addargs(&args, "-%c", ch);
 			addargs(&remote_remote_args, "-%c", ch);
 			break;
@@ -421,6 +419,7 @@ main(int argc, char **argv)
 		case 'c':
 		case 'i':
 		case 'F':
+		case 'Z':
 			addargs(&remote_remote_args, "-%c", ch);
 			addargs(&remote_remote_args, "%s", optarg);
 			addargs(&args, "-%c", ch);
